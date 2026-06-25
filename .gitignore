@@ -32,3 +32,13 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Firebase
+google-services.json
+
+# Environment / secrets
+.env
+backend/config/db.php
+
+# Docker volumes
+backend/data/
