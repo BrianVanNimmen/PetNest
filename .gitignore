@@ -42,3 +42,6 @@ backend/config/db.php
 
 # Docker volumes
 backend/data/
+
+# User uploads (personal data, not source code)
+Petnest_API/uploads/
