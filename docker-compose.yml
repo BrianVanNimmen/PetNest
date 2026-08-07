@@ -1,0 +1,41 @@
+services:
+  petnest_db:
+    image: mariadb:10.4
+    container_name: petnest_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-petnest_home}
+    ports:
+      - "3307:3306"
+    volumes:
+      - petnest_data:/var/lib/mysql
+      - ./Petnest_API/sql/dbPetnest.sql:/docker-entrypoint-initdb.d/dbPetnest.sql:ro
+
+  petnest_phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: petnest_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: petnest_db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "8081:80"
+    depends_on:
+      - petnest_db
+
+  petnest_php:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+    container_name: petnest_php
+    ports:
+      - "8080:80"
+    volumes:
+      - ./Petnest_API:/var/www/html
+    depends_on:
+      - petnest_db
+
+volumes:
+  petnest_data:
