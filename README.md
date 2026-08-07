@@ -116,7 +116,7 @@ Open the project in Android Studio and hit ▶️ Run.
 ## 👨‍💻 Author
 
 **Brian Van Nimmen**
-- 🌐 [brian.dev](https://brian.dev)
+- 🌐 [brian.dev](https://brianvannimmen.dev)
 - 💼 [LinkedIn](https://linkedin.com/in/brianvannimmen)
 - 🐙 [GitHub](https://github.com/brianvannimmen)
 
