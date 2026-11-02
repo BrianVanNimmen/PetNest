@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/medical_record.dart';
-import '../../../network/pet.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/dimens.dart';
@@ -17,7 +16,7 @@ class MedicalRecordScreen extends StatefulWidget {
     required this.onBack,
   });
 
-  final int petId;
+  final String petId;
   final VoidCallback onBack;
 
   @override
@@ -53,20 +52,17 @@ class _MedicalRecordScreenState extends State<MedicalRecordScreen> {
           if (_viewModel.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (record == null) {
-            return const Padding(
-              padding: EdgeInsets.all(contentHorizontalPadding),
-              child: Text(Strings.noRecordFound),
-            );
-          }
           return SingleChildScrollView(
             padding: const EdgeInsets.all(contentHorizontalPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _PetHeader(pet: record.pet),
+                _PetHeader(pet: _viewModel.pet),
                 const SizedBox(height: spacerXL),
-                _RecordFields(record: record),
+                if (record == null)
+                  const Text(Strings.noRecordFound)
+                else
+                  _RecordFields(record: record),
               ],
             ),
           );
@@ -79,7 +75,7 @@ class _MedicalRecordScreenState extends State<MedicalRecordScreen> {
 class _PetHeader extends StatelessWidget {
   const _PetHeader({required this.pet});
 
-  final PetDetail? pet;
+  final Pet? pet;
 
   @override
   Widget build(BuildContext context) {

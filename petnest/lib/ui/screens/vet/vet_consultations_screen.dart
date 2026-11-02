@@ -131,8 +131,8 @@ class _VetConsultationsScreenState extends State<VetConsultationsScreen> {
                   children: [
                     for (final a in _viewModel.appointments)
                       AppointmentRow(
-                        title: a.pet,
-                        subtitle: a.time.split(' ').last,
+                        title: a.petName,
+                        subtitle: a.time,
                         type: a.type,
                         badgeStyle: TypeBadgeStyle.pill,
                       ),

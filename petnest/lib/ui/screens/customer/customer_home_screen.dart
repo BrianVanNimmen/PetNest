@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/user_session.dart';
+import '../../../data/user_session.dart';
 import '../../../strings.dart';
 import '../../../theme/dimens.dart';
 import '../../components/appointment_widgets.dart';
@@ -37,7 +37,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    final customerId = UserSession.id;
+    final customerId = UserSession.uid;
     if (customerId != null) _viewModel.loadAppointments(customerId);
   }
 
@@ -104,8 +104,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 rows: [
                   for (final a in _viewModel.appointments)
                     AppointmentRow(
-                      title: a.pet,
-                      subtitle: '${a.date}  ·  ${a.time.split(' ').last}',
+                      title: a.petName,
+                      subtitle: '${a.date}  ·  ${a.time}',
                       type: a.type,
                     ),
                 ],

@@ -71,20 +71,22 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
       _saving = true;
       _error = null;
     });
-    final ok = await _appointmentViewModel.createAppointment(
-      petId: pet.id,
-      vetId: vet.id,
+    final error = await _appointmentViewModel.createAppointment(
+      pet: pet,
+      vet: vet,
       date: _date,
       time: _time,
-      type: type.apiValue,
+      type: type.value,
     );
     if (!mounted) return;
-    if (ok) {
+    if (error == null) {
       Navigator.of(context).pop(true);
     } else {
       setState(() {
         _saving = false;
-        _error = Strings.saveFailed;
+        _error = error;
+        // The slot may just have been taken
+        if (_appointmentViewModel.occupiedSlots.contains(_time)) _time = '';
       });
     }
   }

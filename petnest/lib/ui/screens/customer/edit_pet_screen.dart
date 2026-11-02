@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../components/petnest_app_bar.dart';
 import '../../viewmodels/customer/pets_view_model.dart';
@@ -9,7 +10,7 @@ import 'pet_form.dart';
 class EditPetScreen extends StatefulWidget {
   const EditPetScreen({super.key, required this.petId});
 
-  final int petId;
+  final String petId;
 
   @override
   State<EditPetScreen> createState() => _EditPetScreenState();
@@ -56,7 +57,6 @@ class _EditPetScreenState extends State<EditPetScreen> {
           initial: pet,
           vets: _vetsViewModel.vets,
           requireVet: true,
-          // A newly picked photo is not sent: the update endpoint is JSON-only
           onSave:
               ({
                 required name,
@@ -65,11 +65,16 @@ class _EditPetScreenState extends State<EditPetScreen> {
                 required vet,
                 required photo,
               }) => _petsViewModel.updatePet(
-                id: widget.petId,
-                name: name,
-                species: species,
-                birthDate: birthDate,
-                vetId: vet!.id,
+                Pet(
+                  id: pet.id,
+                  ownerId: pet.ownerId,
+                  vetId: vet!.id,
+                  name: name,
+                  species: species,
+                  birthDate: birthDate.isEmpty ? null : birthDate,
+                  photoUrl: pet.photoUrl,
+                ),
+                photo: photo,
               ),
         );
       },

@@ -1,30 +1,28 @@
 import '../strings.dart';
 
-/// Appointment types. [apiValue] matches the `bezoeken.type` enum in the
-/// database and is what gets sent to / received from the API.
+/// Appointment types. [value] is what is stored in Firestore.
 enum AppointmentType {
-  checkup('controle', Strings.appointmentTypeCheckup),
-  vaccination('vaccinatie', Strings.appointmentTypeVaccination),
-  surgery('operatie', Strings.appointmentTypeSurgery),
-  other('overig', Strings.appointmentTypeOther);
+  checkup('checkup', Strings.appointmentTypeCheckup),
+  vaccination('vaccination', Strings.appointmentTypeVaccination),
+  surgery('surgery', Strings.appointmentTypeSurgery),
+  other('other', Strings.appointmentTypeOther);
 
-  const AppointmentType(this.apiValue, this.label);
+  const AppointmentType(this.value, this.label);
 
-  final String apiValue;
+  final String value;
   final String label;
 
   /// Types a customer can book.
   static const bookable = [checkup, vaccination, surgery];
 
-  static AppointmentType? fromApi(String value) {
+  static AppointmentType? fromValue(String value) {
     final lower = value.toLowerCase();
     for (final type in values) {
-      if (type.apiValue == lower) return type;
+      if (type.value == lower) return type;
     }
     return null;
   }
 
-  /// Display label for a raw API value; falls back to the raw value.
-  static String labelFor(String apiValue) =>
-      fromApi(apiValue)?.label ?? apiValue;
+  /// Display label for a stored value; falls back to the value itself.
+  static String labelFor(String value) => fromValue(value)?.label ?? value;
 }

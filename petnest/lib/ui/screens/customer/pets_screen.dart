@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/pet.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/dimens.dart';
 import '../../components/bottom_bars.dart';
@@ -21,8 +21,8 @@ class PetsScreen extends StatefulWidget {
 
   /// Resolve to true when a pet was saved, so the list reloads.
   final Future<bool?> Function() onAdd;
-  final Future<bool?> Function(int petId) onEdit;
-  final ValueChanged<int> onMedicalRecord;
+  final Future<bool?> Function(String petId) onEdit;
+  final ValueChanged<String> onMedicalRecord;
   final VoidCallback onLogout;
   final ValueChanged<CustomerTab> onTabSelected;
 
@@ -62,7 +62,9 @@ class _PetsScreenState extends State<PetsScreen> {
               PetPhoto(url: pet.photoUrl, size: petCardPhotoSize),
               const SizedBox(height: spacerL),
               Text(
-                Strings.speciesLabel(pet.species ?? Strings.unknown),
+                Strings.speciesLabel(
+                  pet.species.isEmpty ? Strings.unknown : pet.species,
+                ),
                 style: theme.textTheme.bodyMedium,
               ),
             ],
@@ -198,7 +200,7 @@ class _PetCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      pet.species ?? Strings.unknown,
+                      pet.species.isEmpty ? Strings.unknown : pet.species,
                       style: theme.textTheme.bodySmall!.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),

@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../network/petnest_api.dart';
 import '../../strings.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/dimens.dart';
@@ -31,8 +30,8 @@ class AppLogo extends StatelessWidget {
   }
 }
 
-/// Photo from the API (relative "uploads/..." paths are resolved), with an
-/// asset fallback for missing or broken images.
+/// Photo from Cloud Storage (a download URL), with an asset fallback for
+/// missing or broken images.
 class PetPhoto extends StatelessWidget {
   const PetPhoto({
     super.key,
@@ -53,7 +52,7 @@ class PetPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolved = PetNestApi.imageUrl(url);
+    final resolved = url == null || url!.isEmpty ? null : url;
     final fallback = fallbackAsset == null
         ? const SizedBox.shrink()
         : Image.asset(fallbackAsset!, fit: BoxFit.cover);

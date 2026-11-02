@@ -1,11 +1,18 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/medical_record.dart';
-import '../../../network/petnest_api.dart';
+import '../../../data/models/pet.dart';
+import '../../../data/petnest_repository.dart';
+import '../../../data/user_session.dart';
 import '../../../strings.dart';
 import '../view_model.dart';
 
+/// The vet's editable view of a patient's medical record.
 class VetMedicalRecordViewModel extends ViewModel {
+  VetMedicalRecordViewModel({PetNestRepository? repository})
+    : _repository = repository ?? PetNestRepository.instance;
+
+  final PetNestRepository _repository;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -24,7 +31,7 @@ class VetMedicalRecordViewModel extends ViewModel {
   final musclesStatus = TextEditingController();
   final notes = TextEditingController();
 
-  int? _currentPetId;
+  String? _currentPetId;
 
   void resetSaveSucceeded() {
     _saveSucceeded = false;
@@ -34,7 +41,7 @@ class VetMedicalRecordViewModel extends ViewModel {
     _error = null;
   }
 
-  Future<void> load(int petId) async {
+  Future<void> load(String petId) async {
     _currentPetId = petId;
     _isLoading = true;
     _error = null;
@@ -43,14 +50,14 @@ class VetMedicalRecordViewModel extends ViewModel {
 
     try {
       // No record yet → the fields stay empty
-      final record = await PetNestApi.instance.getMedicalRecord(petId);
+      final record = await _repository.getMedicalRecord(petId);
       weight.text = record?.weight ?? '';
       teethStatus.text = record?.teethStatus ?? '';
       bonesStatus.text = record?.bonesStatus ?? '';
       musclesStatus.text = record?.musclesStatus ?? '';
       notes.text = record?.notes ?? '';
     } catch (e) {
-      _error = Strings.networkError(e);
+      _error = Strings.somethingWentWrong(describeError(e));
     }
     _isLoading = false;
     notify();
@@ -58,35 +65,31 @@ class VetMedicalRecordViewModel extends ViewModel {
 
   Future<void> save() async {
     final petId = _currentPetId;
-    if (petId == null) return;
+    final vetId = UserSession.uid;
+    if (petId == null || vetId == null) return;
     _isSaving = true;
     _error = null;
     _saveSucceeded = false;
     notify();
 
-    final request = MedicalRecordUpdateRequest(
-      petId: petId,
-      weight: weight.text.trim().isEmpty ? null : weight.text,
-      teethStatus: teethStatus.text,
-      bonesStatus: bonesStatus.text,
-      musclesStatus: musclesStatus.text,
-      notes: notes.text.trim().isEmpty ? null : notes.text,
-    );
+    String? orNull(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
 
     try {
-      final response = await PetNestApi.instance.saveMedicalRecord(request);
-      // An empty body after saving also counts as success
-      final emptyBody =
-          response.isSuccessful &&
-          response.status == null &&
-          response.message == null;
-      if (response.status == 200 || emptyBody) {
-        _saveSucceeded = true;
-      } else {
-        _error = response.message ?? Strings.saveFailed;
-      }
+      await _repository.saveMedicalRecord(
+        petId,
+        MedicalRecord(
+          weight: orNull(weight),
+          teethStatus: teethStatus.text.trim(),
+          bonesStatus: bonesStatus.text.trim(),
+          musclesStatus: musclesStatus.text.trim(),
+          notes: orNull(notes),
+        ),
+        vetId: vetId,
+      );
+      _saveSucceeded = true;
     } catch (e) {
-      _error = Strings.networkError(e);
+      _error = Strings.somethingWentWrong(describeError(e));
     }
     _isSaving = false;
     notify();

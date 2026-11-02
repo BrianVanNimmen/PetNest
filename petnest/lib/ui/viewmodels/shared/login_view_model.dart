@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../../network/petnest_api.dart';
-import '../../../network/user_session.dart';
+import '../../../data/models/profiles.dart';
+import '../../../data/petnest_repository.dart';
+import '../../../data/user_session.dart';
 import '../../../strings.dart';
 import '../view_model.dart';
 
@@ -18,21 +19,17 @@ class LoginLoading extends LoginUiState {
 }
 
 class CustomerLoggedIn extends LoginUiState {
-  const CustomerLoggedIn({
-    required this.customerId,
-    required this.firstName,
-    required this.lastName,
-  });
-
-  final int customerId;
-  final String firstName;
-  final String lastName;
+  const CustomerLoggedIn();
 }
 
 class VetLoggedIn extends LoginUiState {
-  const VetLoggedIn(this.vetId);
+  const VetLoggedIn();
+}
 
-  final int vetId;
+/// Signed in with Google, but there is no PetNest profile for the account
+/// yet: the user still has to register as a customer or vet.
+class ProfileRequired extends LoginUiState {
+  const ProfileRequired();
 }
 
 class LoginError extends LoginUiState {
@@ -41,11 +38,15 @@ class LoginError extends LoginUiState {
   final String message;
 }
 
-// A single ViewModel for both roles: the role is only known after the API
-// call (email + password → Firebase → UID → login.php → customer or vet).
+// A single ViewModel for both roles: the role is only known after signing in
+// (Firebase Auth → customers/{uid} or vets/{uid}).
 class LoginViewModel extends ViewModel {
-  LoginUiState _uiState = const LoginIdle();
+  LoginViewModel({PetNestRepository? repository})
+    : _repository = repository ?? PetNestRepository.instance;
 
+  final PetNestRepository _repository;
+
+  LoginUiState _uiState = const LoginIdle();
   LoginUiState get uiState => _uiState;
 
   void _set(LoginUiState state) {
@@ -55,46 +56,61 @@ class LoginViewModel extends ViewModel {
 
   Future<void> login(String email, String password) async {
     _set(const LoginLoading());
-
-    final String? uid;
     try {
-      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      uid = credential.user?.uid;
+      final user = await _repository.signInWithEmail(email, password);
+      await _loadProfile(user, viaGoogle: false);
     } on FirebaseAuthException catch (e) {
       _set(LoginError(e.message ?? Strings.loginFailed));
-      return;
+    } catch (e) {
+      _set(LoginError(Strings.somethingWentWrong(describeError(e))));
     }
-    if (uid == null) {
-      _set(const LoginError(Strings.couldNotGetUid));
+  }
+
+  Future<void> loginWithGoogle() async {
+    _set(const LoginLoading());
+    try {
+      final user = await _repository.signInWithGoogle();
+      if (user == null) {
+        _set(const LoginIdle()); // cancelled
+        return;
+      }
+      await _loadProfile(user, viaGoogle: true);
+    } catch (e) {
+      _set(LoginError(describeError(e)));
+    }
+  }
+
+  Future<void> _loadProfile(User user, {required bool viaGoogle}) async {
+    final customer = await _repository.getCustomer(user.uid);
+    if (customer != null) {
+      UserSession.setCustomer(customer);
+      _set(const CustomerLoggedIn());
       return;
     }
 
-    try {
-      final body = await PetNestApi.instance.login(uid);
-      final data = body.data;
-      if (body.type != null && data != null) {
-        UserSession.id = data.id;
-        UserSession.firstName = data.firstName;
-        UserSession.lastName = data.lastName;
-        UserSession.type = body.type;
+    final vet = await _repository.getVet(user.uid);
+    if (vet == null) {
+      if (viaGoogle) {
+        // Stay signed in: the registration screens use this account
+        _set(const ProfileRequired());
+      } else {
+        await _repository.signOut();
+        _set(const LoginError(Strings.noUserFound));
       }
-      if (body.type == 'arts') {
-        UserSession.vetId = body.vetId;
-      }
-      _set(switch (body.type) {
-        'klant' => CustomerLoggedIn(
-          customerId: body.customerId ?? 0,
-          firstName: body.firstName ?? '',
-          lastName: body.lastName ?? '',
-        ),
-        'arts' => VetLoggedIn(body.vetId ?? 0),
-        _ => LoginError(body.error ?? Strings.unknownError),
-      });
-    } catch (e) {
-      _set(LoginError(Strings.networkError(e)));
+      return;
     }
+    if (vet.status != VetStatus.approved) {
+      await _repository.signOut();
+      _set(
+        LoginError(
+          vet.status == VetStatus.rejected
+              ? Strings.accountRejected
+              : Strings.accountNotApproved,
+        ),
+      );
+      return;
+    }
+    UserSession.setVet(vet);
+    _set(const VetLoggedIn());
   }
 }

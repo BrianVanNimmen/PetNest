@@ -12,11 +12,15 @@ class RegisterScreen extends StatelessWidget {
     required this.onRegisterVet,
     required this.onRegisterCustomer,
     required this.onBack,
+    this.completingProfile = false,
   });
 
   final VoidCallback onRegisterVet;
   final VoidCallback onRegisterCustomer;
   final VoidCallback onBack;
+
+  /// Shown after a Google sign-in for an account without a profile.
+  final bool completingProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -35,14 +39,20 @@ class RegisterScreen extends StatelessWidget {
               const AppLogo(),
               const SizedBox(height: spacerXXXL),
               Text(
-                Strings.register,
+                completingProfile
+                    ? Strings.completeRegistration
+                    : Strings.register,
+                textAlign: TextAlign.center,
                 style: theme.textTheme.headlineMedium!.copyWith(
                   color: PetNestColors.of(context).onBackground,
                 ),
               ),
               const SizedBox(height: spacerS),
               Text(
-                Strings.chooseAccountType,
+                completingProfile
+                    ? Strings.completeRegistrationHint
+                    : Strings.chooseAccountType,
+                textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: spacerXXXL),

@@ -41,7 +41,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
               name: name,
               species: species,
               birthDate: birthDate,
-              vetId: vet?.id ?? 0,
+              vetId: vet?.id,
               photo: photo,
             ),
       ),

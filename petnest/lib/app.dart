@@ -1,9 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'network/patient.dart';
-import 'network/user_session.dart';
+import 'data/models/pet.dart';
+import 'data/petnest_repository.dart';
+import 'data/user_session.dart';
 import 'routes.dart';
 import 'strings.dart';
 import 'theme/app_theme.dart';
@@ -36,6 +36,7 @@ class PetNestApp extends StatefulWidget {
 
 class _PetNestAppState extends State<PetNestApp> {
   final _themeViewModel = ThemeViewModel();
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   // App-scoped so the patient detail routes can look patients up by id
   final _patientsViewModel = VetPatientsViewModel();
 
@@ -47,6 +48,10 @@ class _PetNestAppState extends State<PetNestApp> {
       final customerOnly = path.startsWith('/customer');
       if (customerOnly && !UserSession.isCustomer) return Routes.login;
       if (path.startsWith('/vet') && !UserSession.isVet) return Routes.login;
+      final completingProfile = path.startsWith(Routes.completeProfile);
+      if (completingProfile && PetNestRepository.instance.currentUser == null) {
+        return Routes.login;
+      }
       return null;
     },
     routes: [
@@ -55,7 +60,8 @@ class _PetNestAppState extends State<PetNestApp> {
         builder: (context, state) => LoginScreen(
           onCreateAccount: () => context.push(Routes.register),
           onCustomerLogin: () => context.go(Routes.customerHome),
-          onVetLogin: (_) => context.go(Routes.vetHome),
+          onVetLogin: () => context.go(Routes.vetHome),
+          onProfileRequired: () => context.push(Routes.completeProfile),
           onAccessibility: () => context.push(Routes.accessibility),
         ),
       ),
@@ -71,14 +77,45 @@ class _PetNestAppState extends State<PetNestApp> {
         path: Routes.registerVet,
         builder: (context, state) => RegisterVetScreen(
           onBack: () => context.pop(),
-          onRegistrationSuccess: () => context.go(Routes.login),
+          onRegistrationSuccess: () =>
+              _goToLogin(context, message: Strings.registeredVet),
         ),
       ),
       GoRoute(
         path: Routes.registerCustomer,
         builder: (context, state) => RegisterCustomerScreen(
           onBack: () => context.pop(),
-          onRegistrationSuccess: () => context.go(Routes.login),
+          onRegistrationSuccess: () =>
+              _goToLogin(context, message: Strings.registeredCustomer),
+        ),
+      ),
+
+      // After a Google sign-in for an account without a PetNest profile
+      GoRoute(
+        path: Routes.completeProfile,
+        builder: (context, state) => RegisterScreen(
+          completingProfile: true,
+          onRegisterVet: () => context.push(Routes.completeProfileVet),
+          onRegisterCustomer: () =>
+              context.push(Routes.completeProfileCustomer),
+          onBack: () => _logout(context),
+        ),
+      ),
+      GoRoute(
+        path: Routes.completeProfileVet,
+        builder: (context, state) => RegisterVetScreen(
+          useSignedInAccount: true,
+          onBack: () => context.pop(),
+          onRegistrationSuccess: () =>
+              _goToLogin(context, message: Strings.registeredVet),
+        ),
+      ),
+      GoRoute(
+        path: Routes.completeProfileCustomer,
+        builder: (context, state) => RegisterCustomerScreen(
+          useSignedInAccount: true,
+          onBack: () => context.pop(),
+          onRegistrationSuccess: () => context.go(Routes.customerHome),
         ),
       ),
       GoRoute(
@@ -120,12 +157,12 @@ class _PetNestAppState extends State<PetNestApp> {
       GoRoute(
         path: '/customer/pets/:petId/edit',
         builder: (context, state) =>
-            EditPetScreen(petId: _intParam(state, 'petId')),
+            EditPetScreen(petId: state.pathParameters['petId']!),
       ),
       GoRoute(
         path: '/customer/pets/:petId/record',
         builder: (context, state) => MedicalRecordScreen(
-          petId: _intParam(state, 'petId'),
+          petId: state.pathParameters['petId']!,
           onBack: () => context.pop(),
         ),
       ),
@@ -194,17 +231,19 @@ class _PetNestAppState extends State<PetNestApp> {
     ],
   );
 
-  static int _intParam(GoRouterState state, String name) =>
-      int.tryParse(state.pathParameters[name] ?? '') ?? 0;
+  Pet? _patient(GoRouterState state) =>
+      state.extra as Pet? ??
+      _patientsViewModel.findPatient(state.pathParameters['patientId']!);
 
-  Patient? _patient(GoRouterState state) =>
-      state.extra as Patient? ??
-      _patientsViewModel.findPatient(_intParam(state, 'patientId'));
+  void _goToLogin(BuildContext context, {required String message}) {
+    context.go(Routes.login);
+    _messengerKey.currentState?.showSnackBar(SnackBar(content: Text(message)));
+  }
 
   void _logout(BuildContext context) {
     UserSession.clear();
     _patientsViewModel.clear();
-    FirebaseAuth.instance.signOut();
+    PetNestRepository.instance.signOut();
     context.go(Routes.login);
   }
 
@@ -228,6 +267,7 @@ class _PetNestAppState extends State<PetNestApp> {
         themeMode: _themeViewModel.isDarkMode
             ? ThemeMode.dark
             : ThemeMode.light,
+        scaffoldMessengerKey: _messengerKey,
         routerConfig: _router,
       ),
     );

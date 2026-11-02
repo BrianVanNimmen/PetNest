@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../model/simple_item.dart';
-import '../../../network/pet.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/dimens.dart';
@@ -35,7 +35,7 @@ class PetForm extends StatefulWidget {
   final String title;
   final List<SimpleItem> vets;
   final PetFormSave onSave;
-  final PetDetail? initial;
+  final Pet? initial;
   final bool requireVet;
 
   @override

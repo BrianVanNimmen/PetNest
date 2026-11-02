@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/patient.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/dimens.dart';
@@ -23,7 +23,7 @@ class VetPatientsScreen extends StatefulWidget {
   final VetPatientsViewModel viewModel;
   final VoidCallback onLogout;
   final ValueChanged<VetTab> onTabSelected;
-  final ValueChanged<Patient> onPatientTap;
+  final ValueChanged<Pet> onPatientTap;
 
   @override
   State<VetPatientsScreen> createState() => _VetPatientsScreenState();
@@ -100,7 +100,7 @@ class _VetPatientsScreenState extends State<VetPatientsScreen> {
 class _PatientCard extends StatelessWidget {
   const _PatientCard({required this.patient, required this.onTap});
 
-  final Patient patient;
+  final Pet patient;
   final VoidCallback onTap;
 
   @override

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/patient.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/dimens.dart';
 import '../../components/bottom_bars.dart';
@@ -17,10 +17,10 @@ class VetPatientDetailsScreen extends StatelessWidget {
     required this.onMedicalRecord,
   });
 
-  final Patient patient;
+  final Pet patient;
   final VoidCallback onClose;
   final ValueChanged<VetTab> onTabSelected;
-  final ValueChanged<Patient> onMedicalRecord;
+  final ValueChanged<Pet> onMedicalRecord;
 
   @override
   Widget build(BuildContext context) {

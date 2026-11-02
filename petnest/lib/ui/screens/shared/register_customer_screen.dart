@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/account.dart';
+import '../../../data/models/profiles.dart';
 import '../../../strings.dart';
 import '../../../theme/dimens.dart';
 import '../../../util/text.dart';
@@ -16,17 +16,24 @@ class RegisterCustomerScreen extends StatefulWidget {
     super.key,
     required this.onBack,
     required this.onRegistrationSuccess,
+    this.useSignedInAccount = false,
   });
 
   final VoidCallback onBack;
   final VoidCallback onRegistrationSuccess;
+
+  /// Completes the profile of the signed-in Google account: no email or
+  /// password fields.
+  final bool useSignedInAccount;
 
   @override
   State<RegisterCustomerScreen> createState() => _RegisterCustomerScreenState();
 }
 
 class _RegisterCustomerScreenState extends State<RegisterCustomerScreen> {
-  final _viewModel = RegisterCustomerViewModel();
+  late final _viewModel = RegisterCustomerViewModel(
+    useSignedInAccount: widget.useSignedInAccount,
+  );
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _email = TextEditingController();
@@ -35,6 +42,19 @@ class _RegisterCustomerScreenState extends State<RegisterCustomerScreen> {
   String _birthDate = '';
   Municipality? _selectedMunicipality;
   String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill from the Google account
+    final account = _viewModel.signedInAccount;
+    if (account != null) {
+      final names = (account.displayName ?? '').trim().split(RegExp(r'\s+'));
+      _firstName.text = names.first;
+      _lastName.text = names.skip(1).join(' ');
+      _email.text = account.email ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -52,17 +72,22 @@ class _RegisterCustomerScreenState extends State<RegisterCustomerScreen> {
   }
 
   String? _validate() {
+    final newAccount = !widget.useSignedInAccount;
     if (_firstName.text.trim().isEmpty ||
         _lastName.text.trim().isEmpty ||
-        _email.text.trim().isEmpty) {
+        (newAccount && _email.text.trim().isEmpty)) {
       return Strings.fillInAllFields;
     }
-    if (!isValidEmail(_email.text)) return Strings.enterValidEmail;
+    if (newAccount && !isValidEmail(_email.text)) {
+      return Strings.enterValidEmail;
+    }
     if (_birthDate.isEmpty || _selectedMunicipality == null) {
       return Strings.fillInAllFields;
     }
-    if (_password.text.length < 6) return Strings.passwordTooShort;
-    if (_password.text != _repeatPassword.text) {
+    if (newAccount && _password.text.length < 6) {
+      return Strings.passwordTooShort;
+    }
+    if (newAccount && _password.text != _repeatPassword.text) {
       return Strings.passwordsDoNotMatch;
     }
     return null;
@@ -121,13 +146,15 @@ class _RegisterCustomerScreenState extends State<RegisterCustomerScreen> {
                         hint: Strings.lastNameHint,
                       ),
                       const SizedBox(height: spacerFormField),
-                      LabeledTextField(
-                        label: Strings.email,
-                        controller: _email,
-                        hint: Strings.emailHint,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: spacerFormField),
+                      if (!widget.useSignedInAccount) ...[
+                        LabeledTextField(
+                          label: Strings.email,
+                          controller: _email,
+                          hint: Strings.emailHint,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: spacerFormField),
+                      ],
                       DateField(
                         label: Strings.birthDate,
                         value: _birthDate,
@@ -143,19 +170,21 @@ class _RegisterCustomerScreenState extends State<RegisterCustomerScreen> {
                             setState(() => _selectedMunicipality = m),
                       ),
                       const SizedBox(height: spacerFormField),
-                      LabeledTextField(
-                        label: Strings.password,
-                        controller: _password,
-                        hint: Strings.passwordHint,
-                        obscureText: true,
-                      ),
-                      const SizedBox(height: spacerFormField),
-                      LabeledTextField(
-                        label: Strings.repeatPassword,
-                        controller: _repeatPassword,
-                        hint: Strings.passwordHint,
-                        obscureText: true,
-                      ),
+                      if (!widget.useSignedInAccount) ...[
+                        LabeledTextField(
+                          label: Strings.password,
+                          controller: _password,
+                          hint: Strings.passwordHint,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: spacerFormField),
+                        LabeledTextField(
+                          label: Strings.repeatPassword,
+                          controller: _repeatPassword,
+                          hint: Strings.passwordHint,
+                          obscureText: true,
+                        ),
+                      ],
                       const SizedBox(height: spacerL),
                       if (_validationError != null) ...[
                         ErrorText(_validationError!),

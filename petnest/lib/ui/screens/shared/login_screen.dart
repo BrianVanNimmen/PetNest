@@ -14,12 +14,16 @@ class LoginScreen extends StatefulWidget {
     required this.onCreateAccount,
     required this.onCustomerLogin,
     required this.onVetLogin,
+    required this.onProfileRequired,
     required this.onAccessibility,
   });
 
   final VoidCallback onCreateAccount;
   final VoidCallback onCustomerLogin;
-  final ValueChanged<int> onVetLogin;
+  final VoidCallback onVetLogin;
+
+  /// Signed in with a Google account that has no PetNest profile yet.
+  final VoidCallback onProfileRequired;
   final VoidCallback onAccessibility;
 
   @override
@@ -41,12 +45,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     await _viewModel.login(_email.text, _password.text);
+    _navigate();
+  }
+
+  Future<void> _loginWithGoogle() async {
+    await _viewModel.loginWithGoogle();
+    _navigate();
+  }
+
+  void _navigate() {
     if (!mounted) return;
     switch (_viewModel.uiState) {
       case CustomerLoggedIn():
         widget.onCustomerLogin();
-      case VetLoggedIn(:final vetId):
-        widget.onVetLogin(vetId);
+      case VetLoggedIn():
+        widget.onVetLogin();
+      case ProfileRequired():
+        widget.onProfileRequired();
       default:
         break;
     }
@@ -106,6 +121,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             loading: uiState is LoginLoading,
                             onPressed: _login,
                           ),
+                          const _OrDivider(),
+                          OutlinedButton.icon(
+                            onPressed: uiState is LoginLoading
+                                ? null
+                                : _loginWithGoogle,
+                            icon: const Icon(Icons.account_circle_outlined),
+                            label: const Text(Strings.continueWithGoogle),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: buttonVerticalPadding,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  radiusMedium,
+                                ),
+                              ),
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -145,6 +178,29 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.outlineVariant;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: spacerL),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: color)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: spacerM),
+            child: Text(Strings.or, style: theme.textTheme.labelMedium),
+          ),
+          Expanded(child: Divider(color: color)),
+        ],
       ),
     );
   }

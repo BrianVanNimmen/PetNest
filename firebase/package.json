@@ -1,0 +1,21 @@
+{
+  "name": "petnest-firebase",
+  "private": true,
+  "type": "module",
+  "description": "Firestore/Storage rules, rule tests and the MySQL to Firestore migration for PetNest.",
+  "scripts": {
+    "test": "node --test test/transform.test.mjs && npm run test:rules",
+    "test:rules": "firebase emulators:exec --only firestore,storage \"node --test test/rules.test.mjs\"",
+    "emulators": "firebase emulators:start",
+    "migrate": "node migration/migrate.mjs",
+    "deploy:rules": "firebase deploy --only firestore,storage"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0"
+  }
+}

@@ -30,7 +30,7 @@ class TypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final parsed = AppointmentType.fromApi(type);
+    final parsed = AppointmentType.fromValue(type);
     final isSurgery = parsed == AppointmentType.surgery;
 
     final (Color background, Color foreground) = switch (style) {

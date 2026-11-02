@@ -1,0 +1,268 @@
+rules_version = '2';
+
+// PetNest Firestore rules. The data model is described in README.md.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function docPath(collection, id) {
+      return /databases/$(database)/documents/$(collection)/$(id);
+    }
+
+    function isCustomer() {
+      return signedIn() && exists(docPath('customers', request.auth.uid));
+    }
+
+    function pet(petId) {
+      return get(docPath('pets', petId)).data;
+    }
+
+    function isApprovedVet(vetId) {
+      return get(docPath('vets', vetId)).data.status == 'approved';
+    }
+
+    function isText(data, key, minLength, maxLength) {
+      return key in data
+          && data[key] is string
+          && data[key].size() >= minLength
+          && data[key].size() <= maxLength;
+    }
+
+    function isOptionalText(data, key, maxLength) {
+      return !(key in data)
+          || data[key] == null
+          || (data[key] is string && data[key].size() <= maxLength);
+    }
+
+    function isDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isOptionalDate(data, key) {
+      return !(key in data) || data[key] == null || isDate(data[key]);
+    }
+
+    function unchanged(key) {
+      return request.resource.data[key] == resource.data[key];
+    }
+
+    // ── Reference data ───────────────────────────────────────────────────────
+
+    // Needed on the registration screens, before there is a profile.
+    match /municipalities/{municipalityId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Profiles (document ID = Firebase Auth UID) ───────────────────────────
+
+    match /customers/{customerId} {
+      function validCustomer(data) {
+        return data.keys().hasOnly([
+              'firstName', 'lastName', 'email', 'birthDate', 'municipalityId', 'createdAt'])
+            && isText(data, 'firstName', 1, 100)
+            && isText(data, 'lastName', 1, 100)
+            && isText(data, 'email', 3, 150)
+            && isDate(data.birthDate)
+            && isText(data, 'municipalityId', 1, 20)
+            && data.createdAt is timestamp;
+      }
+
+      allow get: if isUser(customerId);
+      allow create: if isUser(customerId)
+          && validCustomer(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+      allow update: if isUser(customerId)
+          && validCustomer(request.resource.data)
+          && unchanged('createdAt');
+      allow delete: if isUser(customerId);
+    }
+
+    match /vets/{vetId} {
+      function validVet(data) {
+        return data.keys().hasOnly([
+              'firstName', 'lastName', 'email', 'phone', 'practiceName',
+              'municipalityId', 'status', 'certificatePath', 'createdAt'])
+            && isText(data, 'firstName', 1, 100)
+            && isText(data, 'lastName', 1, 100)
+            && isText(data, 'email', 3, 150)
+            && isText(data, 'phone', 1, 30)
+            && isText(data, 'practiceName', 1, 150)
+            && isText(data, 'municipalityId', 1, 20)
+            && data.status in ['pending', 'approved', 'rejected']
+            && isText(data, 'certificatePath', 1, 500)
+            && data.certificatePath.matches('^vetCertificates/' + vetId + '/.+')
+            && data.createdAt is timestamp;
+      }
+
+      // Customers see approved vets (to pick one); a vet always sees their
+      // own profile, even while pending.
+      allow get: if isUser(vetId)
+          || (signedIn() && resource.data.status == 'approved');
+      allow list: if signedIn() && resource.data.status == 'approved';
+
+      // New vets start as pending; only an admin (Firebase console or Admin
+      // SDK) changes the status.
+      allow create: if isUser(vetId)
+          && validVet(request.resource.data)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.createdAt == request.time;
+      allow update: if isUser(vetId)
+          && validVet(request.resource.data)
+          && unchanged('status')
+          && unchanged('createdAt');
+      allow delete: if isUser(vetId);
+    }
+
+    // ── Pets ─────────────────────────────────────────────────────────────────
+
+    match /pets/{petId} {
+      function validPet(data) {
+        return data.keys().hasOnly([
+              'ownerId', 'vetId', 'name', 'species', 'birthDate', 'photoUrl', 'createdAt'])
+            && isText(data, 'ownerId', 1, 128)
+            && isText(data, 'name', 1, 100)
+            && isText(data, 'species', 0, 50)
+            && isOptionalDate(data, 'birthDate')
+            && isOptionalText(data, 'vetId', 128)
+            && isOptionalText(data, 'photoUrl', 2048)
+            && data.createdAt is timestamp;
+      }
+
+      function validVetChoice(data) {
+        return !('vetId' in data) || data.vetId == null || isApprovedVet(data.vetId);
+      }
+
+      // The owner and the pet's vet can read it.
+      allow read: if signedIn()
+          && (resource.data.ownerId == request.auth.uid
+              || resource.data.vetId == request.auth.uid);
+      allow create: if isCustomer()
+          && request.resource.data.ownerId == request.auth.uid
+          && validPet(request.resource.data)
+          && validVetChoice(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+          && resource.data.ownerId == request.auth.uid
+          && unchanged('ownerId')
+          && unchanged('createdAt')
+          && validPet(request.resource.data)
+          && (request.resource.data.get('vetId', null) == resource.data.get('vetId', null)
+              || validVetChoice(request.resource.data));
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // ── Medical records (document ID = pet ID) ───────────────────────────────
+
+    match /medicalRecords/{petId} {
+      function validRecord(data) {
+        return data.keys().hasOnly([
+              'weight', 'teethStatus', 'bonesStatus', 'musclesStatus', 'notes',
+              'updatedAt', 'updatedBy'])
+            && isOptionalText(data, 'weight', 20)
+            && isText(data, 'teethStatus', 0, 100)
+            && isText(data, 'bonesStatus', 0, 100)
+            && isText(data, 'musclesStatus', 0, 100)
+            && isOptionalText(data, 'notes', 5000)
+            && data.updatedAt == request.time
+            && data.updatedBy == request.auth.uid;
+      }
+
+      // The owner reads; only the pet's own vet writes.
+      allow read: if signedIn()
+          && (pet(petId).ownerId == request.auth.uid
+              || pet(petId).vetId == request.auth.uid);
+      allow create, update: if signedIn()
+          && pet(petId).vetId == request.auth.uid
+          && validRecord(request.resource.data);
+      allow delete: if false;
+    }
+
+    // ── Appointments ─────────────────────────────────────────────────────────
+    //
+    // An appointment's ID is its slot, "<vetId>_<yyyy-MM-dd>_<HH:mm>", and it
+    // is written together with bookedSlots/<same ID> in one batch. Creating a
+    // document that already exists counts as an update, which is denied, so a
+    // slot can only be booked once.
+
+    match /appointments/{appointmentId} {
+      function validAppointment(data) {
+        return data.keys().hasOnly([
+              'petId', 'petName', 'customerId', 'customerName', 'vetId', 'vetName',
+              'date', 'time', 'scheduledAt', 'type', 'notes', 'createdAt'])
+            && isText(data, 'petId', 1, 128)
+            && isText(data, 'petName', 1, 100)
+            && isText(data, 'customerName', 1, 201)
+            && isText(data, 'vetId', 1, 128)
+            && isText(data, 'vetName', 1, 201)
+            && isDate(data.date)
+            && data.time is string
+            && data.time.matches('^[0-9]{2}:[0-9]{2}$')
+            && data.scheduledAt is timestamp
+            && data.type in ['checkup', 'vaccination', 'surgery', 'other']
+            && isOptionalText(data, 'notes', 5000)
+            && data.createdAt is timestamp;
+      }
+
+      allow read: if signedIn()
+          && (resource.data.customerId == request.auth.uid
+              || resource.data.vetId == request.auth.uid);
+
+      allow create: if isCustomer()
+          && request.resource.data.customerId == request.auth.uid
+          && validAppointment(request.resource.data)
+          && appointmentId == request.resource.data.vetId + '_'
+              + request.resource.data.date + '_' + request.resource.data.time
+          && request.resource.data.scheduledAt > request.time
+          && request.resource.data.createdAt == request.time
+          && pet(request.resource.data.petId).ownerId == request.auth.uid
+          && isApprovedVet(request.resource.data.vetId)
+          && existsAfter(docPath('bookedSlots', appointmentId));
+
+      allow update: if false;
+
+      // Cancelling must free the slot in the same batch.
+      allow delete: if signedIn()
+          && (resource.data.customerId == request.auth.uid
+              || resource.data.vetId == request.auth.uid)
+          && !existsAfter(docPath('bookedSlots', appointmentId));
+    }
+
+    // Taken slots, without personal data, so customers can see which times
+    // are free without reading other people's appointments.
+    match /bookedSlots/{slotId} {
+      function appointmentAfter() {
+        return getAfter(docPath('appointments', slotId)).data;
+      }
+
+      function appointmentBefore() {
+        return get(docPath('appointments', slotId)).data;
+      }
+
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['vetId', 'date', 'time'])
+          && appointmentAfter().customerId == request.auth.uid
+          && request.resource.data.vetId == appointmentAfter().vetId
+          && request.resource.data.date == appointmentAfter().date
+          && request.resource.data.time == appointmentAfter().time;
+
+      allow update: if false;
+
+      allow delete: if signedIn()
+          && !existsAfter(docPath('appointments', slotId))
+          && (appointmentBefore().customerId == request.auth.uid
+              || appointmentBefore().vetId == request.auth.uid);
+    }
+  }
+}

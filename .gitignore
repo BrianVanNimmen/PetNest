@@ -45,3 +45,12 @@ backend/data/
 
 # User uploads (personal data, not source code)
 Petnest_API/uploads/
+
+# Firebase tooling (rules tests, emulators, migration)
+firebase/node_modules/
+firebase-debug*.log
+firestore-debug.log
+storage-debug.log
+# Service account keys for the migration script
+**/serviceAccount*.json
+*-firebase-adminsdk-*.json

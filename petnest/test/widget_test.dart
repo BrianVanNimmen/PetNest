@@ -12,7 +12,9 @@ void main() {
 
     expect(find.text(Strings.areYouVetOrOwner), findsOneWidget);
     expect(find.text(Strings.createAccount), findsOneWidget);
+    expect(find.text(Strings.continueWithGoogle), findsOneWidget);
 
+    await tester.ensureVisible(find.text(Strings.createAccount));
     await tester.tap(find.text(Strings.createAccount));
     await tester.pumpAndSettle();
 

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/patient.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/dimens.dart';
 import '../../components/bottom_bars.dart';
@@ -18,7 +18,7 @@ class VetMedicalRecordScreen extends StatefulWidget {
     required this.onTabSelected,
   });
 
-  final Patient patient;
+  final Pet patient;
   final VoidCallback onBack;
   final ValueChanged<VetTab> onTabSelected;
 

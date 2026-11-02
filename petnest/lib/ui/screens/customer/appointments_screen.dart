@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/appointment.dart';
+import '../../../data/models/appointment.dart';
 import '../../../strings.dart';
 import '../../../theme/dimens.dart';
 import '../../components/appointment_widgets.dart';
@@ -8,7 +8,6 @@ import '../../components/bottom_bars.dart';
 import '../../components/buttons.dart';
 import '../../components/petnest_app_bar.dart';
 import '../../viewmodels/customer/appointments_view_model.dart';
-import '../../viewmodels/customer/vets_view_model.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({
@@ -29,27 +28,16 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
   final _appointmentsViewModel = AppointmentsViewModel();
-  final _vetsViewModel = VetsViewModel();
 
   @override
   void initState() {
     super.initState();
-    // Load right away; reload with vet names once the vets arrive
     _appointmentsViewModel.loadAppointments();
-    _vetsViewModel.addListener(_onVetsLoaded);
-  }
-
-  void _onVetsLoaded() {
-    if (_vetsViewModel.vets.isNotEmpty) {
-      _appointmentsViewModel.setVets(_vetsViewModel.vets);
-    }
   }
 
   @override
   void dispose() {
-    _vetsViewModel.removeListener(_onVetsLoaded);
     _appointmentsViewModel.dispose();
-    _vetsViewModel.dispose();
     super.dispose();
   }
 
@@ -72,7 +60,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: Text(a.pet, style: theme.textTheme.titleLarge)),
+              Flexible(
+                child: Text(a.petName, style: theme.textTheme.titleLarge),
+              ),
               TypeBadge(type: a.type, style: TypeBadgeStyle.colored),
             ],
           ),
@@ -92,7 +82,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               divider,
               _DetailBlock(
                 label: Strings.vet,
-                value: a.vet.isEmpty ? Strings.unknown : a.vet,
+                value: a.vetName.isEmpty ? Strings.unknown : a.vetName,
               ),
             ],
           ),
@@ -138,7 +128,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ],
       ),
     );
-    if (confirmed == true) await _appointmentsViewModel.deleteAppointment(a.id);
+    if (confirmed != true) return;
+    final error = await _appointmentsViewModel.cancelAppointment(a);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
   @override
@@ -210,7 +205,10 @@ class _AppointmentCard extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(appointment.pet, style: theme.textTheme.bodyMedium),
+                child: Text(
+                  appointment.petName,
+                  style: theme.textTheme.bodyMedium,
+                ),
               ),
               Expanded(
                 child: Text(

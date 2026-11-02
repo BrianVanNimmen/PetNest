@@ -1,14 +1,16 @@
-import '../../../network/appointment.dart';
-import '../../../network/user_session.dart';
+import '../../../data/models/appointment.dart';
+import '../../../data/petnest_repository.dart';
+import '../../../data/user_session.dart';
 import '../../../strings.dart';
-import '../../../util/text.dart';
 import '../view_model.dart';
-import 'vet_appointments.dart';
 
 class VetHomeViewModel extends ViewModel {
-  VetHomeViewModel() {
+  VetHomeViewModel({PetNestRepository? repository})
+    : _repository = repository ?? PetNestRepository.instance {
     loadTodayAppointments();
   }
+
+  final PetNestRepository _repository;
 
   final String vetName = UserSession.fullName;
 
@@ -22,7 +24,7 @@ class VetHomeViewModel extends ViewModel {
   String? get error => _error;
 
   Future<void> loadTodayAppointments() async {
-    final vetId = UserSession.vetId;
+    final vetId = UserSession.uid;
     if (vetId == null) {
       _error = Strings.invalidSession;
       notify();
@@ -33,9 +35,12 @@ class VetHomeViewModel extends ViewModel {
     notify();
 
     try {
-      _appointments = await loadVetAppointmentsForDay(vetId, todayIso());
+      _appointments = await _repository.getVetAppointmentsForDay(
+        vetId,
+        DateTime.now(),
+      );
     } catch (e) {
-      _error = Strings.networkError(e);
+      _error = Strings.somethingWentWrong(describeError(e));
     }
     _isLoading = false;
     notify();

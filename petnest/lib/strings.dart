@@ -79,23 +79,30 @@ abstract final class Strings {
   static const vetRegistration = 'Vet registration';
   static const certificateLabel = 'Certificate * (pdf / png / jpg)';
 
-  // Errors
+  // Google sign-in (OAuth)
+  static const continueWithGoogle = 'Continue with Google';
+  static const or = 'or';
+  static const completeRegistration = 'Complete your registration';
+  static const completeRegistrationHint =
+      'Your Google account is not linked to PetNest yet. Choose your account type.';
+
+  // Errors and messages
   static const loginFailed = 'Login failed';
-  static const couldNotGetUid = 'Could not retrieve UID';
-  static const unknownError = 'Unknown error';
-  static const firebaseRegistrationFailed = 'Firebase registration failed';
-  static const unknownServerError = 'Unknown server error';
-  static const couldNotReadCertificate = 'Could not read certificate';
-  static const serverError = 'Server error';
+  static const noUserFound = 'No user found for this account';
+  static const accountNotApproved = 'Your account has not been approved yet';
+  static const accountRejected = 'Your account was not approved';
+  static const registrationFailed = 'Registration failed';
   static const saveFailed = 'Save failed';
-  static const invalidSession = 'Invalid session: vet ID not found.';
-  static const invalidSessionLoginAgain =
-      'Invalid session: vet ID not found. Please log in again.';
-  static const invalidRecordId = 'Invalid record ID';
-  static String networkError(Object e) => 'Network error: $e';
-  static String noServerConnection(Object e) => 'No connection to server: $e';
-  static String couldNotLoadMunicipalities(int code) =>
-      'Could not load municipalities ($code)';
+  static const invalidSession =
+      'Your session has expired. Please log in again.';
+  static const slotTaken =
+      'This time slot was just booked. Please choose another one.';
+  static const registeredCustomer =
+      'Registration complete. You can now log in.';
+  static const registeredVet =
+      'Registration complete. You can log in once your account is approved.';
+  static String somethingWentWrong(String details) =>
+      'Something went wrong: $details';
 
   // ===== CUSTOMER =====
 

@@ -1,8 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/account.dart';
-import '../../../network/pet.dart';
+import '../../../data/models/profiles.dart';
+import '../../../data/models/pet.dart';
 import '../../../strings.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/dimens.dart';
@@ -19,17 +19,24 @@ class RegisterVetScreen extends StatefulWidget {
     super.key,
     required this.onBack,
     required this.onRegistrationSuccess,
+    this.useSignedInAccount = false,
   });
 
   final VoidCallback onBack;
   final VoidCallback onRegistrationSuccess;
+
+  /// Completes the profile of the signed-in Google account: no email or
+  /// password fields.
+  final bool useSignedInAccount;
 
   @override
   State<RegisterVetScreen> createState() => _RegisterVetScreenState();
 }
 
 class _RegisterVetScreenState extends State<RegisterVetScreen> {
-  final _viewModel = RegisterVetViewModel();
+  late final _viewModel = RegisterVetViewModel(
+    useSignedInAccount: widget.useSignedInAccount,
+  );
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _email = TextEditingController();
@@ -40,6 +47,19 @@ class _RegisterVetScreenState extends State<RegisterVetScreen> {
   Municipality? _selectedMunicipality;
   PickedUpload? _certificate;
   String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill from the Google account
+    final account = _viewModel.signedInAccount;
+    if (account != null) {
+      final names = (account.displayName ?? '').trim().split(RegExp(r'\s+'));
+      _firstName.text = names.first;
+      _lastName.text = names.skip(1).join(' ');
+      _email.text = account.email ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -59,20 +79,25 @@ class _RegisterVetScreenState extends State<RegisterVetScreen> {
   }
 
   String? _validate() {
+    final newAccount = !widget.useSignedInAccount;
     if (_firstName.text.trim().isEmpty ||
         _lastName.text.trim().isEmpty ||
-        _email.text.trim().isEmpty) {
+        (newAccount && _email.text.trim().isEmpty)) {
       return Strings.fillInAllFields;
     }
-    if (!isValidEmail(_email.text)) return Strings.enterValidEmail;
+    if (newAccount && !isValidEmail(_email.text)) {
+      return Strings.enterValidEmail;
+    }
     if (_selectedMunicipality == null ||
         _phone.text.trim().isEmpty ||
         _practiceName.text.trim().isEmpty) {
       return Strings.fillInAllFields;
     }
     if (_certificate == null) return Strings.uploadCertificate;
-    if (_password.text.length < 6) return Strings.passwordTooShort;
-    if (_password.text != _repeatPassword.text) {
+    if (newAccount && _password.text.length < 6) {
+      return Strings.passwordTooShort;
+    }
+    if (newAccount && _password.text != _repeatPassword.text) {
       return Strings.passwordsDoNotMatch;
     }
     return null;
@@ -145,13 +170,15 @@ class _RegisterVetScreenState extends State<RegisterVetScreen> {
                         hint: Strings.lastNameHint,
                       ),
                       const SizedBox(height: spacerFormField),
-                      LabeledTextField(
-                        label: Strings.email,
-                        controller: _email,
-                        hint: Strings.emailHint,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: spacerFormField),
+                      if (!widget.useSignedInAccount) ...[
+                        LabeledTextField(
+                          label: Strings.email,
+                          controller: _email,
+                          hint: Strings.emailHint,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: spacerFormField),
+                      ],
                       MunicipalityField(
                         municipalities: _viewModel.municipalities,
                         selected: _selectedMunicipality,
@@ -173,19 +200,21 @@ class _RegisterVetScreenState extends State<RegisterVetScreen> {
                         hint: Strings.practiceNameHint,
                       ),
                       const SizedBox(height: spacerFormField),
-                      LabeledTextField(
-                        label: Strings.password,
-                        controller: _password,
-                        hint: Strings.passwordHint,
-                        obscureText: true,
-                      ),
-                      const SizedBox(height: spacerFormField),
-                      LabeledTextField(
-                        label: Strings.repeatPassword,
-                        controller: _repeatPassword,
-                        hint: Strings.passwordHint,
-                        obscureText: true,
-                      ),
+                      if (!widget.useSignedInAccount) ...[
+                        LabeledTextField(
+                          label: Strings.password,
+                          controller: _password,
+                          hint: Strings.passwordHint,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: spacerFormField),
+                        LabeledTextField(
+                          label: Strings.repeatPassword,
+                          controller: _repeatPassword,
+                          hint: Strings.passwordHint,
+                          obscureText: true,
+                        ),
+                      ],
                       const SizedBox(height: spacerFormField),
                       if (_validationError != null) ...[
                         ErrorText(_validationError!),

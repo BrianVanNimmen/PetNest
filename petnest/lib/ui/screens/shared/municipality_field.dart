@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../network/account.dart';
+import '../../../data/models/profiles.dart';
 import '../../../strings.dart';
 import '../../components/form_fields.dart';
 
